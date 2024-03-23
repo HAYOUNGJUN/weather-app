@@ -1,4 +1,16 @@
-export default function WeatherBox({ weatherData }) {
+export type WeatherData = {
+  name: string;
+  main: {
+    temp: number;
+  };
+  weather: [{ description: string }];
+};
+
+type WeatherBoxProps = {
+  weatherData: WeatherData;
+};
+
+export default function WeatherBox({ weatherData }: WeatherBoxProps) {
   console.log(weatherData);
   return (
     <div className='border-4 p-14 rounded-2xl bg-cyan-50'>
