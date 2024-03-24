@@ -1,30 +1,62 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import WeatherBox, { type WeatherData } from './components/WeatherBox';
 import WeatherButton from './components/WeatherButton';
-// import { get } from './util/http';
+import { ClipLoader } from 'react-spinners';
 
 function App() {
   const [weatherData, setWeatherData] = useState<WeatherData>();
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string>();
 
+  const [city, setCity] = useState('');
+
+  const cities = ['paris', 'new york', 'tokyo', 'seoul'];
   const API_KEY = import.meta.env.VITE_API_KEY;
 
-  function getCurrentLocation() {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
+  // function getCurrentLocation() {
+  //   navigator.geolocation.getCurrentPosition((position) => {
+  //     const { latitude, longitude } = position.coords;
 
-      getWeatherByCurrentLocation(lat, lon);
+  //     getWeatherByCurrentLocation(latitude, longitude);
+  //   });
+  // }
+
+  const getCurrentLocation = new Promise<{
+    latitude: number;
+    longitude: number;
+  }>((resolve) => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+
+      resolve({ latitude, longitude });
     });
+  });
+
+  async function getWeatherByCurrentLocation() {
+    try {
+      setIsFetching(true);
+
+      const { latitude, longitude } = await getCurrentLocation;
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
+      );
+      const data = await response.json();
+      setWeatherData(data);
+
+      setIsFetching(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
+    }
   }
 
-  async function getWeatherByCurrentLocation(lat: number, lon: number) {
+  async function getWeatherByCity() {
     try {
       setIsFetching(true);
 
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
       );
       const data = await response.json();
       setWeatherData(data);
@@ -38,8 +70,12 @@ function App() {
   }
 
   useEffect(() => {
-    getCurrentLocation();
-  }, []);
+    if (city) {
+      getWeatherByCity();
+    } else {
+      getWeatherByCurrentLocation();
+    }
+  }, [city]);
 
   let content: ReactNode;
 
@@ -48,7 +84,7 @@ function App() {
   }
 
   if (isFetching) {
-    content = <p>Fetching data...</p>;
+    content = <ClipLoader color='red' loading={isFetching} size={150} />;
   }
 
   if (weatherData) {
@@ -58,7 +94,7 @@ function App() {
   return (
     <div className='flex justify-center items-center h-screen flex-col'>
       {content}
-      <WeatherButton />
+      <WeatherButton cities={cities} setCity={setCity} />
     </div>
   );
 }
